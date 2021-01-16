@@ -1,0 +1,78 @@
+<?php
+
+/**
+ * @file
+ * Contains word_counter.module.
+ */
+
+use Drupal\Core\Routing\RouteMatchInterface;
+use Drupal\word_counter\WordCounterContex;
+use Drupal\word_counter\Form\WordCounterSettingsForm;
+use Drupal\Core\Entity\Display\EntityViewDisplayInterface;
+use Drupal\node\Entity\Node;
+use Drupal\node\NodeInterface;
+use Drupal\Core\Entity\EntityInterface;
+
+/**
+ * Implements hook_help().
+ */
+function word_counter_help($route_name, RouteMatchInterface $route_match) {
+  switch ($route_name) {
+    // Main module help for the word_counter module.
+    case 'help.page.word_counter':
+      $output = '';
+      $output .= '<h3>' . t('About') . '</h3>';
+      $output .= '<p>' . t('Word counter module.') . '</p>';
+      return $output;
+
+    default:
+  }
+}
+
+/**
+ * Implements hook_theme().
+ */
+function word_counter_theme($existing, $type, $theme, $path) {
+  //clear all values
+  WordCounterContex::clear();
+  return [
+  ];
+}
+
+/**
+ * Implements hook_ENTITY_TYPE_delete().
+ */
+function word_counter_node_delete(Node $node) {
+  WordCounterContex::delete($node->get('nid')->value);  
+}
+
+/**
+ * Implements hook_ENTITY_TYPE_view().
+ */
+function word_counter_node_view(array &$build, NodeInterface $entity, \Drupal\Core\Entity\Display\EntityViewDisplayInterface $display, $view_mode) {
+
+  // if set displayed in settings.
+  if(WordCounterContex::getState() && WordCounterContex::checkTypes($entity->getType())){
+    $CounterContext = WordCounterContex::getInstance(); 
+    // if body displayed add to his displayed body count words.
+    if(isset($build['body'][0])){
+
+      $body_str = $build['body'][0]['#text'];
+      $nid = $entity->id();
+
+      //default view when open page
+      if($nid != null) 
+        $count_words = $CounterContext->get($nid,$body_str);
+
+      // preview mode
+      else $count_words = WordCounterContex::getWordCount($body_str);
+
+      if(isset($count_words)){
+        $end_tag = strrchr($body_str, '<');
+        $result = str_replace($end_tag, ' (' . $count_words. ' words) '. $end_tag, $body_str);
+        $build['body'][0]['#text'] = $result;
+      }
+    }
+  }
+
+}
