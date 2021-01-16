@@ -1,0 +1,7 @@
+word_counter.word_counter_settings_form:
+  path: '/admin/config/word_counter_settings'
+  defaults:
+    _form: '\Drupal\word_counter\Form\WordCounterSettingsForm'
+    _title: 'WordCounterSettingsForm'
+  requirements:
+    _permission: 'administer site configuration'

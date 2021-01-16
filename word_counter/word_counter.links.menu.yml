@@ -1,0 +1,7 @@
+# Config menu items definition
+word_counter.admin_settings:
+  route_name: word_counter.word_counter_settings_form
+  parent: system.admin
+  description: 'Provide menu for custom configs.'
+  title: 'Word counter settings'
+  weight: 5
