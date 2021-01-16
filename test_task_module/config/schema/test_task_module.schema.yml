@@ -1,7 +1,0 @@
-test_task.settings:
-  type: config_object
-  label: 'Test task config'
-  mapping:
-    mail_form_id:
-      type: text
-      label: 'Message'

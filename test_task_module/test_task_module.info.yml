@@ -1,5 +1,0 @@
-name: 'TestTaskModule'
-type: module
-description: 'Test task with forms.'
-core: 8.x
-package: 'Custom'
