@@ -1,0 +1,7 @@
+test_task_module.mail_form:
+  path: '/mail_form'
+  defaults:
+    _form: '\Drupal\test_task_module\Form\MailForm'
+    _title: 'MailForm'
+  requirements:
+    _access: 'TRUE'

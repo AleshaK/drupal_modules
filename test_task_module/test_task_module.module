@@ -1,0 +1,76 @@
+<?php
+
+/**
+ * @file
+ * Contains test_task_module.module.
+ */
+
+use Drupal\Core\Routing\RouteMatchInterface;
+use Drupal\menu_link_content\Entity\MenuLinkContent;
+
+/**
+ * Implements hook_help().
+ */
+function test_task_module_help($route_name, RouteMatchInterface $route_match) {
+  switch ($route_name) {
+    // Main module help for the test_task_module module.
+    case 'help.page.test_task_module':
+      $output = '';
+      $output .= '<h3>' . t('About') . '</h3>';
+      $output .= '<p>' . t('Test task with forms.') . '</p>';
+      return $output;
+
+    default:
+  }
+}
+
+/**
+ * Implements hook_mail().
+ *
+ * @see \Drupal\example\Mail\MailHandler
+ */
+function test_task_module_mail(string $key, array &$message, array $params): void {
+  /** @var \Drupal\Core\Render\RendererInterface $renderer */
+  $renderer = \Drupal::service('renderer');
+
+  if (isset($params['headers'])) {
+    $message['headers'] = array_merge($message['headers'], $params['headers']);
+  }
+  if (!empty($params['from'])) {
+    $message['from'] = $params['from'];
+  }
+  $message['subject'] = $params['subject'];
+  $message['body'][] = $renderer->renderPlain($params['body']);
+}
+
+/**
+ * Implements hook_install().
+ */
+function test_task_module_install(){
+  //create main menu navigation link
+  $link = MenuLinkContent::create([
+    'id' => 'mail_form_menu',
+    'title' => 'Mail form',
+    'link' => ['uri' => 'internal:/mail_form'],
+    'menu_name' => 'main',
+    'weight' => 10,
+  ]);
+  $link->save();
+
+  //save link id in config
+  $id = $link->id();
+  \Drupal::service('config.factory')->getEditable('test_task.settings')->set('mail_form_id', $id)->save();
+}
+
+/**
+ * Implements hook_uninstall().
+ */
+function test_task_module_uninstall(){
+  // link from menu by id into the config
+  $id = \Drupal::config('test_task.settings')->get('mail_form_id');
+  try{
+    MenuLinkContent::load($id)->delete();
+  } catch(Error $er){
+    \Drupal::messenger()->addMessage('Cannot delete main menu link!');
+  }
+}

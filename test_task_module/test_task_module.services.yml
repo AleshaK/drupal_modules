@@ -1,0 +1,4 @@
+services:
+  test_task_module.mail_handler:
+    class: Drupal\test_task_module\Mail\MailHandler
+    arguments: ['@plugin.manager.mail', '@language_manager']
