@@ -1,0 +1,184 @@
+Все либы:
+
+COMPOSER_MEMORY_LIMIT=-1 composer update
+
+COMPOSER_MEMORY_LIMIT=-1 composer require 'drupal/rules'
+COMPOSER_MEMORY_LIMIT=-1 composer require drupal/smtp
+COMPOSER_MEMORY_LIMIT=-1 composer require "drupal/address"
+COMPOSER_MEMORY_LIMIT=-1 composer require drupal/commerce
+
+///// GIT
+
+
+git init -b branch // local repo branch
+git config core.autocrlf true  // fix exception with git add .
+git add . | "file.name" // add files from directory in local repo
+git rm . | "file.name" // remove files from dir in local repo
+
+git pull // выгрузить все из облачного репо определенной ветки
+git fetch // выгрузить все ветки
+git push origin branch // залить в облако в ветку 
+git commit -m "message" // делает коммит в локал репо
+git remote -v // отображает все соединения с удаленными репо
+git remote add origin "https://github.com/AleshaK/word_counter_module.git" // добавляет удаленный origin
+git remote rm origin // удаляет все origin
+rm -rf .git // удаляет гит
+rm -rf .git* // удаляет гит
+
+
+последовательность чтобы выгрузить файлы на гит:
+1. Создаем репо на гитхабе
+2. Заходим в папку с проектом и делаем:
+2.1 git init -b main
+2.2 git add .
+3. git remote add origin "link"
+4. git commit -m "comments"
+5. git push origin main
+
+
+//// INSTALL DRUSH
+
+COMPOSER_MEMORY_LIMIT=-1 composer update
+
+composer remove drush/drush
+COMPOSER_MEMORY_LIMIT=-1 composer require drush/drush
+
+COMPOSER_MEMORY_LIMIT=-1 composer create-project drupal-composer/drupal-project:8.x-dev drupal --stability dev --no-interaction --no-install
+composer create-project drupal-composer/drupal-project:9.x drupal9 --stability dev --no-interaction --no-install
+
+//// INSTALL DRUPAL CONSOLE
+
+COMPOSER_MEMORY_LIMIT=-1 composer require drupal/console --prefer-dist --optimize-autoloader
+composer remove drupal/console
+
+COMPOSER_MEMORY_LIMIT=-1 composer require drupal/console
+
+drupal gm
+drupal geco
+
+
+
+///////////// Модули друпал 
+
+smtp (работа с почтой) {
+COMPOSER_MEMORY_LIMIT=-1 composer require drupal/smtp
+После активации модуля надо пройти в /admin/config/system/smtp и настроить почту. 
+В первом поле надо поставить on. Это активация сервиса почты. Далее идет сам почтовый сервер (провайдера зачастую, но можно использовать деф гугла).
+
+Гугл сервис:
+SMTP server - smtp.gmail.com
+SMTP backup server - (можно например яндекса) smtp.yandex.ru
+SMTP port - 465 (465 - защищенный, 25 - незащищенный. Gmail поддерживает только защищенные поэтому надо активировать всю защиту)
+Use encrypted protocol - Use SSL
+Enable TLS encryption automatically - On
+
+в форме SMTP AUTHENTICATION необходимо указать данные аккаунта, который будет рассылать почту (в случае gmail, email гугл аккаунта и пароль).
+!!!!!!!!!! в настройках гугл аккаунта, от которого ведется рассылка сообщений должна быть отключена опция:
+https://myaccount.google.com/u/0/lesssecureapps?pli=1&rapt=AEjHL4MIDaLePIS1ZZTSAfhd44wDmkOmgneEDuc-NFWKZcy1rP3WFc5t0GXmxEnKRsPg_Fu7Yb9ehm4wQ_D4enWLGcbC8-r8DA
+
+
+В форме email options указываются доп параметры, куда отправляются логи почты и имя, которым подписывается почта.
+Остальное не нужно.
+}
+
+Поле адреса
+COMPOSER_MEMORY_LIMIT=-1 composer require "drupal/address ~1.0"
+
+
+	//////////////// COMMERCE
+
+На опен сервер {
+Если нет гита, его лучше установить
+COMPOSER_MEMORY_LIMIT=-1 composer require 'drupal/commerce:2.x-dev@dev' --prefer-dist
+}
+
+На докер{
+docker-php-ext-install bcmath
+make test
+test
+export LD_RUN_PATH=/usr/local/lib
+export LD_LIBRARY_PATH=/usr/local/lib/
+apt update 
+apt-get install git
+
+COMPOSER_MEMORY_LIMIT=-1 composer require drupal/commerce:2.x-dev
+}
+
+COMPOSER_MEMORY_LIMIT=-1 composer remove drupal/commerce:2.x-dev
+COMPOSER_MEMORY_LIMIT=-1 composer update
+
+/////////////// COLOR FIELD
+COMPOSER_MEMORY_LIMIT=-1  composer require 'drupal/color_field:^2.0'
+Доп библиотеки:
+	{     
+            "type": "package",
+            "package": {
+                "name": "jquery/simplecolor",
+                "version": "1.2.1",
+                "dist": {
+                  "url": "https://github.com/recurser/jquery-simple-color/archive/v1.2.1.zip",
+                  "type": "zip"
+                },
+            "type": "drupal-library"
+            }
+        },
+        {
+            "type": "package",
+            "package": {
+                "name": "bgrins/spectrum",
+                "version": "1.8.0",
+                "type": "drupal-library",
+                "source": {
+                    "url": "https://github.com/bgrins/spectrum.git",
+                    "type": "git",
+                    "reference": "1.8.0"
+                }
+            }
+        }
+    ],
+    "require": {
+        "composer/installers": "^1.2",
+        "drupal/commerce": "2.x-dev",
+        "drupal/core-composer-scaffold": "^8.8",
+        "drupal/core-project-message": "^8.8",
+        "drupal/core-recommended": "^8.8",
+        "drupal/smtp": "^1.0",
+       			 				"jquery/simplecolor": "1.2.1",
+        						"bgrins/spectrum":"1.8.0"
+    },
+
+//////
+Создание БД
+docker run -e MYSQL_ROOT_PASSWORD=admin -e MYSQL_DATABASE=drupal8 -e MYSQL_USER=drupal8 -e MYSQL_PASSWORD=drupal8 -v mariadb:/var/lib/mysql -d --name mariadb1 mariadb
+
+Друпал
+docker run --name drupal8-1 --link mariadb:mysql -p 80:80 -d drupal:8-apache
+
+///Докер
+
+docker cp file be39ab6d4934:/file
+docker cp D:/drupal/OSPanel/domains/drupal8/modules/custom be39ab6d4934:/opt/drupal/web/modules/custom
+docker cp D:/drupal/OSPanel/domains/drupal8/modules/custom/transaction/src/TransactionListBuilder.php be39ab6d4934:/opt/drupal/web/core/modules/custom/transaction/src/Entity
+docker cp D:/apache/custom/transaction be39ab6d4934:/opt/drupal/web/modules/custom
+docker cp D:/apache/custom/transaction/src/Entity/Transaction.php be39ab6d4934:/opt/drupal/web/modules/custom/transaction/src/Entity
+docker cp D:/apache/custom/transaction/src/Entity/TransactionType.php be39ab6d4934:/opt/drupal/web/modules/custom/transaction/src/Entity
+docker cp D:/apache/custom/transaction/transaction.links.menu.yml be39ab6d4934:/opt/drupal/web/modules/custom/transaction/transaction.links.menu.yml
+
+docker cp be39ab6d4934:/opt/drupal/web/modules/custom/create_rf_submission D:/drupal/OSPanel/domains/drupal/web/modules/custom
+docker cp be39ab6d4934:/opt/drupal/web/modules/custom/test_task_module D:/drupal/OSPanel/domains/drupal8/modules/custom
+
+docker cp 88c06179f559:/opt/drupal/web/modules/custom/ D:/drupal/OSPanel/domains/drupal8/modules
+docker cp 88c06179f559:/opt/drupal/web/modules/custom D:/apache/custom1
+docker cp 88c06179f559:/opt/drupal/composer.jsin D:/apache/json/composer12.json
+docker cp D:/apache/json/composer12.json 88c06179f559:/opt/drupal/composer.json
+
+docker cp D:/apache/json/composer12.json 6e266d77d807:/opt/drupal/composer.json 
+docker cp C:/Users/lesha/OneDrive/"Рабочий стол"/йцу/transaction/src/Entity/Transaction.php be39ab6d4934:/opt/drupal/web/modules/custom/transaction/src/Entity/Transaction.php
+docker cp be39ab6d4934:/opt/drupal/web/themes/custom D:/drupal/OSPanel/domains/drupal/web/themes/
+
+docker cp  D:/drupal/OSPanel/domains/drupal/web/themes/custom/mytheme  0abf38e39ff9:/opt/drupal/web/themes/custom/
+docker cp  0abf38e39ff9:/opt/drupal/web/themes/custom/mytheme/mytheme.theme D:/drupal/OSPanel/
+docker cp  D:/drupal/OSPanel/ 0abf38e39ff9:/opt/drupal/web/themes/custom/
+
+docker cp  0abf38e39ff9:/opt/drupal/web/themes/custom/ D:/drupal/OSPanel/custom/
+docker cp  D:/drupal/OSPanel/custom/custom 0abf38e39ff9:/opt/drupal/web/themes/custom/
