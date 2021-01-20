@@ -5,6 +5,10 @@ namespace Drupal\test_task_module\Form;
 use Drupal\Core\Form\FormBase;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\StringTranslation\TranslatableMarkup;
+use Drupal\Core\Url;
+use Exception;
+use HubSpot\Factory;
+use HubSpot\Client\Crm\Contacts\Model\SimplePublicObjectInput;
 
 /**
  * Class MailForm.
@@ -67,7 +71,7 @@ class MailForm extends FormBase {
    * {@inheritdoc}
    */
   public function validateForm(array &$form, FormStateInterface $form_state) {
-    if(!$form_state->getValue('email') || !preg_match('/\w+@\w+\.\w+/', $form_state->getValue('email'))){
+    if(!$form_state->getValue('email') || !preg_match('/\w+@\w+\.\D{2,3}$/', $form_state->getValue('email'))){
       $form_state->setErrorByName('email', $this->t('Wrong email address!'));
     }
     if(preg_match('/\d/', $form_state->getValue('first_name'))){
@@ -81,10 +85,14 @@ class MailForm extends FormBase {
 
   /**
    * {@inheritdoc}
-   */
+   */ 
   public function submitForm(array &$form, FormStateInterface $form_state) {
+    //get all values from form
     $first_name = $form_state->getValue('first_name');
     $last_name = '';
+    $email = $form_state->getValue('email');
+    $subject = new TranslatableMarkup($form_state->getValue('subject'));
+
     if($form_state->getValue('last_name'))
       $last_name = ' ' . $form_state->getValue('last_name');
     $body = $form_state->getValue('message')['value'] . 
@@ -92,20 +100,56 @@ class MailForm extends FormBase {
     $body = [
       '#markup' => $body,
     ];
-    $subject = new TranslatableMarkup($form_state->getValue('subject'));
-    $from = $form_state->getValue('email');
 
-    // to make a wonderful thing, uncomment
-    // while(true){
-      $mail_handler = \Drupal::service('test_task_module.mail_handler');
-      $result = $mail_handler->sendMail($from, $subject, $body);
-      $messanger = \Drupal::messenger();
-      if($result){
-        \Drupal::logger('test_task_module')->notice('Send message to ' . $form_state->getValue('email'));
-        $messanger->addMessage('Message has been sent.');
-      } else{
-        $messanger->addMessage('Message something went wrong.', 'error');
+    $mail_handler = \Drupal::service('test_task_module.mail_handler');
+    $result = $mail_handler->sendMail($email, $subject, $body);
+    $messanger = \Drupal::messenger();
+    if($result){
+      //API key from HubSpot
+      $api_key = '548eb958-5237-44e4-8d6b-de7694245972';
+
+      // HubSpot instance
+      $hubSpot = \HubSpot\Factory::createWithApiKey($api_key);
+
+      // search contact by email
+      // this is an example from https://github.com/HubSpot/hubspot-api-php/blob/master/README.md
+      $filter = new \HubSpot\Client\Crm\Contacts\Model\Filter();
+      $filter
+          ->setOperator('EQ')
+          ->setPropertyName('email') 
+          ->setValue($email); 
+
+      $filterGroup = new \HubSpot\Client\Crm\Contacts\Model\FilterGroup();
+      $filterGroup->setFilters([$filter]);
+
+      $searchRequest = new \HubSpot\Client\Crm\Contacts\Model\PublicObjectSearchRequest();
+      $searchRequest->setFilterGroups([$filterGroup]);
+
+      // @var CollectionResponseWithTotalSimplePublicObject $contactsPage
+      $contactsPage = $hubSpot->crm()->contacts()->searchApi()->doSearch($searchRequest);
+
+      // if there are no search results, than create a new contact
+      
+      if($contactsPage->getTotal() == 0){
+        // @var HubSpot\Client\Crm\Contacts\Model\SimplePublicObjectInput
+        // object, which contains input variables
+        // need to create new contact
+        $contactInput = new \HubSpot\Client\Crm\Contacts\Model\SimplePublicObjectInput();
+
+        $contactInput->setProperties([
+          'firstname' => $first_name,
+          'lastname' => $last_name,
+          'email' => $email,
+        ]);
+
+        // @var HubSpot\Client\Crm\Contacts\Model\SimplePublicObjectInput
+        $contact = $hubSpot->crm()->contacts()->basicApi()->create($contactInput);
+
       }
-    //}
+      \Drupal::logger('test_task_module')->notice('Send message to ' . $email);
+      $messanger->addMessage('Message has been sent.');
+    } else{
+      $messanger->addMessage('Message something went wrong.', 'error');
+    }
   }
 }
