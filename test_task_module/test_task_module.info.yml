@@ -1,5 +1,6 @@
 name: 'TestTaskModule'
 type: module
-description: 'Test task with forms.'
+description: 'Test task with HubSpot and forms .'
 core: 8.x
+core_version_requirement: ^8 || ^9
 package: 'Custom'

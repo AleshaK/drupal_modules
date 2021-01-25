@@ -1,0 +1,5 @@
+test_task_module.admin_settings:
+  route_name: test_task_module.config_mail_form
+  parent: system.admin_config_services
+  description: 'Config your contact API key.'
+  title: 'HubSpot Settings'

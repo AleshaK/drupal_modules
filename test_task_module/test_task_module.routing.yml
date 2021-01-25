@@ -2,6 +2,14 @@ test_task_module.mail_form:
   path: '/mail_form'
   defaults:
     _form: '\Drupal\test_task_module\Form\MailForm'
-    _title: 'MailForm'
+    _title: 'Mail Form'
   requirements:
-    _access: 'TRUE'
+    _role: 'authenticated'
+
+test_task_module.config_mail_form:
+  path: '/admin/config/config_mail_form'
+  defaults:
+    _form: '\Drupal\test_task_module\Form\ConfigMailForm'
+    _title: 'HubSpot Settings'
+  requirements:
+    _permission: 'administer site configuration'

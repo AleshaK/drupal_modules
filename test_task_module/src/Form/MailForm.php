@@ -5,10 +5,8 @@ namespace Drupal\test_task_module\Form;
 use Drupal\Core\Form\FormBase;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\Core\Url;
+use Drupal\test_task_module\HubSpotHelper;
 use Exception;
-use HubSpot\Factory;
-use HubSpot\Client\Crm\Contacts\Model\SimplePublicObjectInput;
 
 /**
  * Class MailForm.
@@ -57,6 +55,7 @@ class MailForm extends FormBase {
       '#title' => $this->t('Message'),
       '#required' =>true,
       '#weight' => '20',
+      '#default_value' =>'lalala'
     ];
     $form['submit'] = [
       '#type' => 'submit',
@@ -71,15 +70,22 @@ class MailForm extends FormBase {
    * {@inheritdoc}
    */
   public function validateForm(array &$form, FormStateInterface $form_state) {
+    
+    // validate form by email: check for x@x.y where x - any set of letters or numbers, y - a set of 2 to 3 letters
     if(!$form_state->getValue('email') || !preg_match('/\w+@\w+\.\D{2,3}$/', $form_state->getValue('email'))){
       $form_state->setErrorByName('email', $this->t('Wrong email address!'));
     }
+
+    //  there are no numbers in the first name.
     if(preg_match('/\d/', $form_state->getValue('first_name'))){
       $form_state->setErrorByName('first_name', $this->t('Wrong first name!'));
     }
+
+    //  there are no numbers in the last name.
     if(preg_match('/\d/', $form_state->getValue('last_name'))){
       $form_state->setErrorByName('last_name', $this->t('Wrong last name!'));
     }
+
     parent::validateForm($form, $form_state);
   }
 
@@ -87,69 +93,85 @@ class MailForm extends FormBase {
    * {@inheritdoc}
    */ 
   public function submitForm(array &$form, FormStateInterface $form_state) {
+
     //get all values from form
     $first_name = $form_state->getValue('first_name');
-    $last_name = '';
+    $last_name = $form_state->getValue('last_name');
     $email = $form_state->getValue('email');
     $subject = new TranslatableMarkup($form_state->getValue('subject'));
-
-    if($form_state->getValue('last_name'))
-      $last_name = ' ' . $form_state->getValue('last_name');
-    $body = $form_state->getValue('message')['value'] . 
-         '<p> From ' . $first_name . $last_name .'.</p>';
     $body = [
-      '#markup' => $body,
+      '#markup' => $form_state->getValue('message')['value'],
     ];
 
-    $mail_handler = \Drupal::service('test_task_module.mail_handler');
-    $result = $mail_handler->sendMail($email, $subject, $body);
     $messanger = \Drupal::messenger();
-    if($result){
-      //API key from HubSpot
-      $api_key = '548eb958-5237-44e4-8d6b-de7694245972';
+    $logger = \Drupal::logger('test_task_module');
 
-      // HubSpot instance
-      $hubSpot = \HubSpot\Factory::createWithApiKey($api_key);
-
-      // search contact by email
-      // this is an example from https://github.com/HubSpot/hubspot-api-php/blob/master/README.md
-      $filter = new \HubSpot\Client\Crm\Contacts\Model\Filter();
-      $filter
-          ->setOperator('EQ')
-          ->setPropertyName('email') 
-          ->setValue($email); 
-
-      $filterGroup = new \HubSpot\Client\Crm\Contacts\Model\FilterGroup();
-      $filterGroup->setFilters([$filter]);
-
-      $searchRequest = new \HubSpot\Client\Crm\Contacts\Model\PublicObjectSearchRequest();
-      $searchRequest->setFilterGroups([$filterGroup]);
-
-      // @var CollectionResponseWithTotalSimplePublicObject $contactsPage
-      $contactsPage = $hubSpot->crm()->contacts()->searchApi()->doSearch($searchRequest);
-
-      // if there are no search results, than create a new contact
-      
-      if($contactsPage->getTotal() == 0){
-        // @var HubSpot\Client\Crm\Contacts\Model\SimplePublicObjectInput
-        // object, which contains input variables
-        // need to create new contact
-        $contactInput = new \HubSpot\Client\Crm\Contacts\Model\SimplePublicObjectInput();
-
-        $contactInput->setProperties([
-          'firstname' => $first_name,
-          'lastname' => $last_name,
-          'email' => $email,
-        ]);
-
-        // @var HubSpot\Client\Crm\Contacts\Model\SimplePublicObjectInput
-        $contact = $hubSpot->crm()->contacts()->basicApi()->create($contactInput);
-
-      }
-      \Drupal::logger('test_task_module')->notice('Send message to ' . $email);
-      $messanger->addMessage('Message has been sent.');
-    } else{
-      $messanger->addMessage('Message something went wrong.', 'error');
+    // if message send add log message in hubspot.
+    try{
+    // Drupal\test_task_module\HubSpotHelper object
+    $hubSpotHelper = new HubSpotHelper(\Drupal::config(ConfigMailForm::CONFIG_HUBSPOT_FORM_SETINGS)->get(ConfigMailForm::CONFIG_HUBSPOT_FORM_API_KEY));
+    } catch(Exception $e){
+      $this->errorSendMail($email, $messanger, $logger);
+      return;
     }
+
+    // search contact by email address
+    // @var \HubSpot\Client\Crm\Contacts\Model\CollectionResponseWithTotalSimplePublicObject
+    $search_result = $hubSpotHelper->searchByEmail($email);
+    
+    // if there are no search results, than create a new contact
+    // or if exists result, get contact 
+    // add a log message to an existing contact
+    // else show error message
+    if($search_result->getTotal() == 0){
+      // create a new contact
+      try{
+        $contact = $hubSpotHelper->createContact($email, $first_name, $last_name);
+      } catch(Exception $e){
+        $logger->error('User ' . \Drupal::currentUser()->id() . ' entered wrong data. Email: ' . $email);
+        $messanger->addMessage('Invalid entered parameters!!', 'error');
+        return;
+      }
+    } else if ($search_result->getResults()){
+      //get contact
+      $contact = $search_result->getResults()[0];
+    } else{
+      $this->errorSendMail($email, $messanger, $logger);
+      return;
+    }
+    // get result of log
+    $log = $hubSpotHelper->sendMessageLogToContact($contact, $subject, $body['#markup']);
+
+    //if ok, send mail
+    //else show error message
+    if($log){
+      //get mail service
+      $mail_handler = \Drupal::service('test_task_module.mail_handler');
+
+      //send message
+      $result = $mail_handler->sendMail($email, $subject, $body);
+
+      // check, maybe something went wrong with mail delivery
+      if($result){
+        $messanger->addMessage('Message was sent.');
+        \Drupal::logger('test_task_module')->notice('Send message to ' . $email . ' by user with uid ' . \Drupal::currentUser()->id());
+      } else{
+        $this->errorSendMail($email, $messanger, $logger);
+      }
+    } else{
+      $this->errorSendMail($email, $messanger, $logger);
+    }
+  }
+
+  /**
+   * Method, that sends an error message and logs it.
+   * 
+   * @param string email address where there was an attempt to send a letter
+   * @param $messanger \Drupal::messenger()
+   * @param $logger \Drupal::logger()
+   */
+  protected function errorSendMail(string $email, $messanger, $logger){
+    $logger->error('User ' . \Drupal::currentUser()->id() . ' cannot send mail to ' . $email);
+    $messanger->addMessage('Something went wrong, try again later', 'error');
   }
 }

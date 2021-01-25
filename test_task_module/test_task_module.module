@@ -17,7 +17,7 @@ function test_task_module_help($route_name, RouteMatchInterface $route_match) {
     case 'help.page.test_task_module':
       $output = '';
       $output .= '<h3>' . t('About') . '</h3>';
-      $output .= '<p>' . t('Test task with forms.') . '</p>';
+      $output .= '<p>' . t('Test task with HubSpot and forms.') . '</p>';
       return $output;
 
     default:
@@ -68,6 +68,7 @@ function test_task_module_install(){
 function test_task_module_uninstall(){
   // link from menu by id into the config
   $id = \Drupal::config('test_task.settings')->get('mail_form_id');
+  //delete link
   try{
     MenuLinkContent::load($id)->delete();
   } catch(Error $er){
